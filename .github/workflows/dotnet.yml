@@ -1,0 +1,63 @@
+name: Build and push .NET packages
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '7.0.x'
+        
+     # Add NuGet Sources
+
+    - name: Create Local NuGet Directory
+      run: mkdir ~/nuget
+
+    - name: Add Local Nuget Source
+      run: dotnet nuget add source ~/nuget
+
+    - name: Add GGroupp NuGet Source
+      run: >
+        dotnet nuget add source ${{ secrets.GG_NUGET_SOURCE_URL }}
+        -n ggroupp -u ${{ secrets.GG_NUGET_SOURCE_USER_NAME }}
+        -p ${{ secrets.GG_NUGET_SOURCE_USER_PASSWORD }}
+        --store-password-in-clear-text
+
+    # ProactiveMessage.Entity.csproj
+
+    - name: Restore ProactiveMessage.Entity.csproj
+      run: dotnet restore ./src/*/ProactiveMessage.Entity.csproj
+
+    - name: Build ProactiveMessage.Entity.csproj
+      run: dotnet build ./src/*/ProactiveMessage.Entity.csproj --no-restore  -c Release
+
+    - name: Pack ProactiveMessage.Entity.csproj
+      run: dotnet pack ./src/*/ProactiveMessage.Entity.csproj --no-build -o ~/nuget  -c Release
+
+    # ProactiveMessage.Handler.csproj
+
+    - name: Restore ProactiveMessage.Handler.csproj
+      run: dotnet restore ./src/*/ProactiveMessage.Handler.csproj
+
+    - name: Build ProactiveMessage.Handler.csproj
+      run: dotnet build ./src/*/ProactiveMessage.Handler.csproj --no-restore  -c Release
+
+    - name: Pack ProactiveMessage.Handler.csproj
+      run: dotnet pack ./src/*/ProactiveMessage.Handler.csproj --no-build -o ~/nuget  -c Release
+
+    # Push
+      
+    - name: Push Packages
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: >
+        dotnet nuget push "../../../nuget/*.nupkg"
+        -s ${{ secrets.GG_NUGET_SOURCE_URL }}
+        -k ${{ secrets.GG_NUGET_SOURCE_USER_PASSWORD }}
+        --skip-duplicate
