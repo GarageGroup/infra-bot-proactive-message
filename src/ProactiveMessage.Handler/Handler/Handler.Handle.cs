@@ -2,6 +2,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
+using Microsoft.Bot.Schema;
+using Microsoft.Extensions.Logging;
 
 namespace GarageGroup.Infra.Bot.Builder;
 
@@ -34,11 +36,25 @@ partial class ProactiveMessageHandler
         var botAppId = option.BotAppId;
         var conversation = messageJson.ConversationReference;
 
-        await cloudAdapter.ContinueConversationAsync(botAppId, conversation, SendAsync, cancellationToken).ConfigureAwait(false);
-        return Result.Success<Unit>(default);
+        return await ContinueConversationAsync(botAppId, conversation, SendAsync, cancellationToken).ConfigureAwait(false);
 
         Task SendAsync(ITurnContext turnContext, CancellationToken cancellationToken)
             =>
             turnContext.SendActivityAsync(messageJson.Activity, cancellationToken);
+    }
+
+    private async Task<Result<Unit, Failure<HandlerFailureCode>>> ContinueConversationAsync(
+        string botAppId, ConversationReference reference, BotCallbackHandler callback, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cloudAdapter.ContinueConversationAsync(botAppId, reference, callback, cancellationToken).ConfigureAwait(false);
+            return Result.Success<Unit>(default);
+        }
+        catch (ErrorResponseException exception) when (IsTransientErrorCode(exception.Response.StatusCode) is false)
+        {
+            logger?.LogError(exception, "An unexpected persistent error response occured when trying to send a message to a bot");
+            return Failure.Create(HandlerFailureCode.Persistent, exception.Body.Error.Message);
+        }
     }
 }
