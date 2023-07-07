@@ -2,6 +2,7 @@ using System;
 using Microsoft.Bot.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PrimeFuncPack;
 
 namespace GarageGroup.Infra.Bot.Builder;
@@ -15,12 +16,14 @@ public static class ProactiveMessageHandlerDependency
         ArgumentNullException.ThrowIfNull(dependency);
         return dependency.Fold<IProactiveMessageHandler>(CreateHandler);
 
-        static ProactiveMessageHandler CreateHandler(TCloudAdapter cloudAdapter, ProactiveMessageHandlerOption option)
+        static ProactiveMessageHandler CreateHandler(
+            IServiceProvider serviceProvider, TCloudAdapter cloudAdapter, ProactiveMessageHandlerOption option)
         {
+            ArgumentNullException.ThrowIfNull(serviceProvider);
             ArgumentNullException.ThrowIfNull(cloudAdapter);
             ArgumentNullException.ThrowIfNull(option);
 
-            return new(cloudAdapter, option);
+            return new(cloudAdapter, option, serviceProvider.ResolveLogger<ProactiveMessageHandler>());
         }
     }
 
@@ -41,7 +44,12 @@ public static class ProactiveMessageHandlerDependency
             return new(
                 cloudAdapter: cloudAdapter,
                 option: new ProactiveMessageHandlerOption(
-                    botAppId: configuration[botAppIdConfigurationKey] ?? string.Empty));
+                    botAppId: configuration[botAppIdConfigurationKey] ?? string.Empty),
+                logger: serviceProvider.ResolveLogger<ProactiveMessageHandler>());
         }
     }
+
+    private static ILogger<T>? ResolveLogger<T>(this IServiceProvider serviceProvider)
+        =>
+        serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<T>();
 }
