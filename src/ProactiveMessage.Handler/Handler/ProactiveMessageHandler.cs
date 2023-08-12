@@ -1,6 +1,5 @@
 using System.Net;
 using Microsoft.Bot.Builder;
-using Microsoft.Extensions.Logging;
 
 namespace GarageGroup.Infra.Bot.Builder;
 
@@ -10,12 +9,9 @@ internal sealed partial class ProactiveMessageHandler : IProactiveMessageHandler
 
     private readonly ProactiveMessageHandlerOption option;
 
-    private readonly ILogger? logger;
-
-    internal ProactiveMessageHandler(CloudAdapterBase cloudAdapter, ProactiveMessageHandlerOption option, ILogger<ProactiveMessageHandler>? logger)
+    internal ProactiveMessageHandler(CloudAdapterBase cloudAdapter, ProactiveMessageHandlerOption option)
     {
         this.cloudAdapter = cloudAdapter;
-        this.logger = logger;
         this.option = option;
     }
 
