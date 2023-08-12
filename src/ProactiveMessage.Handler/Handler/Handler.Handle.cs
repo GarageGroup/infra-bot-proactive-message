@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
-using Microsoft.Extensions.Logging;
 
 namespace GarageGroup.Infra.Bot.Builder;
 
@@ -53,8 +52,9 @@ partial class ProactiveMessageHandler
         }
         catch (ErrorResponseException exception) when (IsTransientErrorCode(exception.Response.StatusCode) is false)
         {
-            logger?.LogError(exception, "An unexpected persistent error response occured when trying to send a message to a bot");
-            return Failure.Create(HandlerFailureCode.Persistent, exception.Body.Error.Message);
+            return exception.ToFailure(
+                HandlerFailureCode.Persistent,
+                "An unexpected persistent error response occured when trying to send a message to a bot");
         }
     }
 }
